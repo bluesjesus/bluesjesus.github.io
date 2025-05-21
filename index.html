@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>World Clock & Weather</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="manifest" href="manifest.json">
+  <link rel="icon" sizes="192x192" href="icon-192.png">
+  <style>
+    body {
+      background: #101820;
+      color: #fff;
+      font-family: 'Segoe UI', 'Roboto', Arial, sans-serif;
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    header {
+      margin: 36px 0 16px 0;
+      font-size: 2em;
+      font-weight: 600;
+      color: #1982c4;
+      text-align: center;
+    }
+    .container {
+      width: 100vw;
+      max-width: 430px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      padding-bottom: 40px;
+    }
+    .clock {
+      background: #1a2233;
+      border-radius: 18px;
+      padding: 18px 22px 14px 22px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      box-shadow: 0 4px 24px 0 #0002;
+      margin-bottom: 10px;
+    }
+    .city {
+      font-size: 1.12em;
+      font-weight: 500;
+      margin-bottom: 3px;
+    }
+    .tz {
+      font-size: 0.85em;
+      color: #cccccc;
+      margin-bottom: 7px;
+      letter-spacing: .5px;
+    }
+    .time {
+      font-size: 2.5em;
+      font-family: 'Roboto Mono', 'Menlo', monospace;
+      font-weight: 700;
+      letter-spacing: 2px;
+      color: #ffca3a;
+      margin-bottom: 2px;
+    }
+    .weather {
+      background: #113355;
+      border-radius: 14px;
+      padding: 18px 20px 16px 20px;
+      margin-bottom: 12px;
+      font-size: 1.1em;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      box-shadow: 0 4px 20px 0 #0002;
+      align-items: flex-start;
+    }
+    .weather input {
+      background: #222;
+      color: #fff;
+      border-radius: 6px;
+      border: 1px solid #bbb;
+      font-size: 1em;
+      padding: 4px 8px;
+      margin-left: 7px;
+    }
+    .weather button {
+      margin-left: 4px;
+      background: #1982c4;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 4px 10px;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    .weather .error {
+      color: #ff5e5e;
+      font-size: 0.98em;
+      margin-top: 4px;
+    }
+    .weather .desc {
+      color: #eee;
+      font-size: 1em;
+      text-transform: capitalize;
+    }
+    .weather .meta {
+      color: #bbb;
+      font-size: 0.98em;
+    }
+    @media (max-width: 500px) {
+      .container { max-width: 98vw; }
+    }
+  </style>
+</head>
+<body>
+  <header>World Clock & Weather</header>
+  <div class="container">
+    <!-- Clocks will render here -->
+    <div id="clocks"></div>
+    <!-- Weather will render here -->
+    <div id="weather"></div>
+  </div>
+  <script>
+    // ========== WORLD CLOCK ==========
+    const timeZones = [
+      { label: "UTC", zone: "UTC" },
+      { label: "New York", zone: "America/New_York" },
+      { label: "London", zone: "Europe/London" },
+      { label: "Paris", zone: "Europe/Paris" },
+      { label: "Tokyo", zone: "Asia/Tokyo" },
+      { label: "Sydney", zone: "Australia/Sydney" },
+      { label: "Your Local Time", zone: Intl.DateTimeFormat().resolvedOptions().timeZone }
+    ];
+    function renderClocks() {
+      const container = document.getElementById('clocks');
+      container.innerHTML = "";
+      timeZones.forEach(({ label, zone }) => {
+        const now = new Date();
+        let timeStr;
+        try {
+          const tzNow = new Date(now.toLocaleString("en-US", {timeZone: zone}));
+          timeStr = tzNow.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+          });
+        } catch {
+          timeStr = "Invalid TZ";
+        }
+        const tzShort = zone.replace(/.*\//, '');
+        const html = `
+          <div class="clock">
+            <div class="city">${label}</div>
+            <div class="tz">${tzShort}</div>
+            <div class="time">${timeStr}</div>
+          </div>
+        `;
+        container.innerHTML += html;
+      });
+    }
+    renderClocks();
+    setInterval(renderClocks, 1000);
+
+    // ========== WEATHER ==========
+    // 1. Use your API key from https://openweathermap.org/api
+    const OPENWEATHER_API_KEY = "1d630acabd0b41e88f7f5e1f72479869"; // <-- REPLACE THIS
+    // 2. Default city (can be changed by user)
+    const defaultCity = "London";
+    let weatherCity = localStorage.getItem("weatherCity") || defaultCity;
+
+    function saveWeatherCity(city) {
+      weatherCity = city;
+      localStorage.setItem("weatherCity", city);
+    }
+
+    function renderWeatherBox({city, temp, desc, humidity, country, icon, error}) {
+      let content = "";
+      if (error) {
+        content = `<div class="error">${error}</div>`;
+      } else if (city) {
+        content = `
+          <div style="display:flex;align-items:center;gap:14px;">
+            <img src="https://openweathermap.org/img/wn/${icon}@2x.png" style="width:55px;height:55px;margin-right:2px;">
+            <span>
+              <span style="font-size:1.3em;font-weight:600">${city}, ${country}</span><br>
+              <span style="font-size:2em;">${Math.round(temp)}°C</span>
+            </span>
+          </div>
+          <span class="desc">${desc}</span>
+          <span class="meta">Humidity: ${humidity}%</span>
+        `;
+      } else {
+        content = `<div>Loading weather...</div>`;
+      }
+      // Input box for changing city
+      content += `
+        <form id="weather-form" style="margin-top:10px;">
+          <label>City:
+            <input type="text" id="weather-city" value="${weatherCity}">
+          </label>
+          <button type="submit">Change</button>
+        </form>
+      `;
+      document.getElementById("weather").innerHTML = `<div class="weather">${content}</div>`;
+      document.getElementById("weather-form").onsubmit = e => {
+        e.preventDefault();
+        const city = document.getElementById("weather-city").value.trim();
+        if (city) {
+          saveWeatherCity(city);
+          fetchWeather();
+        }
+      }
+    }
+
+    async function fetchWeather() {
+      if (!OPENWEATHER_API_KEY || OPENWEATHER_API_KEY === "YOUR_API_KEY_HERE") {
+        renderWeatherBox({error: "Please set your OpenWeatherMap API key in the code."});
+        return;
+      }
+      renderWeatherBox({});
+      try {
+        const url = `https://api.openweathermap.org/data/2.5/weather?q=${encodeURIComponent(weatherCity)}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+        const res = await fetch(url);
+        if (!res.ok) {
+          throw new Error("City not found");
+        }
+        const w = await res.json();
+        renderWeatherBox({
+          city: w.name,
+          country: w.sys.country,
+          temp: w.main.temp,
+          desc: w.weather[0].description,
+          humidity: w.main.humidity,
+          icon: w.weather[0].icon
+        });
+      } catch (err) {
+        renderWeatherBox({error: "Weather for this city not found."});
+      }
+    }
+    fetchWeather();
+
+    // ========== PWA SERVICE WORKER ==========
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js');
+      });
+    }
+  </script>
+</body>
+</html>
